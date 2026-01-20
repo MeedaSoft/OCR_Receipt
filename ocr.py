@@ -8,6 +8,26 @@ import numpy as np
 pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 os.environ['TESSDATA_PREFIX'] = r"C:\Program Files\Tesseract-OCR\tessdata"
 
+def correct_thai_characters(text):
+    """Apply corrections for commonly misrecognized Thai characters and words"""
+    # Common Thai word replacements for OCR errors
+    corrections = {
+        # Character-level corrections (if needed)
+        'ผ': 'พ',  # ผ mistaken for พ with tone mark
+        
+        # Common word patterns
+        'ยูกเว้': 'ยกเว้น',  # ยูกเว้ -> ยกเว้น
+        'เซ็นเต': 'เซ็นเตอร์',  # incomplete word
+        'สปันบอนด์': 'สปันบอนด์',  # Keep as-is (might be product name)
+        'สมุดริมลวด': 'สมุดริมลวด',  # Keep as-is (product name)
+    }
+    
+    result = text
+    for wrong, correct in corrections.items():
+        result = result.replace(wrong, correct)
+    
+    return result
+
 def extract_text(image):
     """Extract text from image using Tesseract OCR with fallbacks"""
     if image is None or image.size == 0:
@@ -35,10 +55,10 @@ def extract_text(image):
                 text = pytesseract.image_to_string(
                     temp_path,
                     lang="tha+eng",
-                    config="--psm 6"
+                    config="--psm 6 --oem 3"
                 )
                 if text.strip():
-                    return text
+                    return correct_thai_characters(text)
             except pytesseract.pytesseract.TesseractError as e:
                 print(f"Thai+Eng OCR failed: {str(e)[:80]}...")
             
@@ -74,9 +94,9 @@ def extract_text(image):
                 print("Attempting OCR with default settings...")
                 text = pytesseract.image_to_string(
                     temp_path,
-                    config="--psm 6"
+                    config="--psm 6 --oem 3"
                 )
-                return text if text.strip() else ""
+                return correct_thai_characters(text) if text.strip() else ""
             except Exception as e:
                 print(f"All OCR attempts failed: {str(e)[:80]}...")
                 return ""
